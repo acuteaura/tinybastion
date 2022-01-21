@@ -5,4 +5,5 @@ type Config struct {
 	Port                int
 	PersistentKeepalive int
 	ExternalHostname    string
+	CIDR                string
 }
