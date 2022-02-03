@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"github.com/acuteaura/tinybastion"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"github.com/acuteaura/tinybastion/internal/oidc"
 	"log"
 	"os"
 	"os/signal"
+	"time"
 )
 
 func main() {
@@ -14,7 +16,7 @@ func main() {
 		Port:                5555,
 		PersistentKeepalive: 10,
 		ExternalHostname:    "localhost",
-		CIDR:                "10.99.0.1/24",
+		CIDR:                "10.99.0.0/24",
 	})
 	if err != nil {
 		panic(err)
@@ -26,28 +28,26 @@ func main() {
 		}
 	}()
 
-	keyPriv, err := wgtypes.GeneratePrivateKey()
-	if err != nil {
-		panic(err)
-	}
-	keyPub := keyPriv.PublicKey()
+	tinybastion.NewServer(context.TODO(), 8080, &oidc.ClientConfig{
+		Issuer:   "mock",
+		ClientID: "mock",
+	})
 
-	pconfig, err := tb.AddPeer(keyPub)
-	if err != nil {
-		panic(err)
-	}
-
-	log.Default().Printf("%v", pconfig)
-
-	log.Default().Printf("%v", tb.ServerInfo())
+	go func(ctx context.Context) {
+		t := time.Tick(time.Minute)
+		select {
+		case <-t:
+			err = tb.CleanupPeers()
+			if err != nil {
+				panic(err)
+			}
+		case <-ctx.Done():
+			return
+		}
+	}(context.TODO())
 
 	intChan := make(chan os.Signal)
 	signal.Notify(intChan, os.Interrupt, os.Kill)
 
 	<-intChan
-
-	err = tb.CleanupPeers()
-	if err != nil {
-		panic(err)
-	}
 }

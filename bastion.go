@@ -1,6 +1,10 @@
 package tinybastion
 
 import (
+	"log"
+	"net"
+	"time"
+
 	"github.com/acuteaura/tinybastion/internal/stabilizer"
 	"github.com/jonboulle/clockwork"
 	"github.com/metal-stack/go-ipam"
@@ -8,10 +12,6 @@ import (
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-	"log"
-	"net"
-	"strconv"
-	"time"
 )
 
 var clock = clockwork.NewRealClock()
@@ -20,16 +20,18 @@ type Bastion struct {
 	Config *Config
 	Client *wgctrl.Client
 
-	InnerIP               *ipam.IP
+	gatewayIP             *ipam.IP
 	ipam                  ipam.Ipamer
 	peerCleanupStabilizer *stabilizer.IterativeStabilizer[wgtypes.Key]
 	link                  netlink.Link
+	publicKey             wgtypes.Key
 }
 
 type BastionServerInfo struct {
 	EndpointHost string
-	EndpointPort string
+	EndpointPort int
 	GatewayIP    string
+	PublicKey    string
 }
 
 func New(c Config) (*Bastion, error) {
@@ -97,9 +99,9 @@ func (b *Bastion) init() error {
 		return err
 	}
 
-	b.InnerIP = ip
+	b.gatewayIP = ip
 
-	device, err := b.Client.Device(b.Config.DeviceName)
+	_, err = b.Client.Device(b.Config.DeviceName)
 	if err != nil {
 		return err
 	}
@@ -109,7 +111,7 @@ func (b *Bastion) init() error {
 		return err
 	}
 
-	device.PrivateKey = privkey
+	b.publicKey = privkey.PublicKey()
 
 	port := b.Config.Port
 
@@ -164,6 +166,7 @@ func (b *Bastion) AddPeer(key wgtypes.Key) (*wgtypes.PeerConfig, error) {
 
 	return &newPeer, nil
 }
+
 func (b *Bastion) CleanupPeers() error {
 	device, err := b.Client.Device(b.Config.DeviceName)
 	if err != nil {
@@ -179,9 +182,6 @@ func (b *Bastion) CleanupPeers() error {
 	}
 
 	log.Default().Printf("found %d candidates for deletion", len(badPeers))
-
-	b.peerCleanupStabilizer.Iterate(badPeers)
-	b.peerCleanupStabilizer.Iterate(badPeers)
 
 	peersToRemove := make([]wgtypes.PeerConfig, 0, len(badPeers))
 	for _, peerToRemove := range b.peerCleanupStabilizer.Iterate(badPeers) {
@@ -208,7 +208,8 @@ func (b *Bastion) Destroy() error {
 func (b *Bastion) ServerInfo() BastionServerInfo {
 	return BastionServerInfo{
 		EndpointHost: b.Config.ExternalHostname,
-		EndpointPort: strconv.FormatInt(int64(b.Config.Port), 10),
-		GatewayIP:    b.InnerIP.IP.String(),
+		EndpointPort: b.Config.Port,
+		GatewayIP:    b.gatewayIP.IP.String(),
+		PublicKey:    b.publicKey.String(),
 	}
 }
