@@ -20,8 +20,10 @@ type CreateTunnelResponse struct {
 	PeerConfig *MarshallablePeerConfig
 }
 
-func NewServer(ctx context.Context, listenPort int, issuer string) *Server {
+func NewServer(ctx context.Context, tb *Bastion, listenPort int, issuer string) *Server {
 	s := &Server{}
+
+	s.tb = tb
 
 	s.listener = &http.Server{
 		Addr:    fmt.Sprintf(":%d", listenPort),

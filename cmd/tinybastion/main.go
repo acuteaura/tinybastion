@@ -47,7 +47,7 @@ func main() {
 		}
 	}()
 
-	tinybastion.NewServer(context.TODO(), httpPort, oidcIssuer)
+	tinybastion.NewServer(context.TODO(), tb, httpPort, oidcIssuer)
 
 	go func(ctx context.Context) {
 		for {

@@ -1,1 +1,7 @@
 /.idea
+
+wg-keys/
+
+# Bins
+tinybastion
+tinyclient
