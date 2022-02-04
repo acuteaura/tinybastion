@@ -18,6 +18,7 @@ func main() {
 	flag.StringVar(&deviceName, "device-name", "tinybastion", "wireguard device name (will be created/deleted)")
 	flag.StringVar(&externalHostname, "external-hostname", "localhost", "hostname to advertise in peer config for this instance")
 	flag.StringVar(&cidr, "cidr", "10.0.0.0/24", "network in CIDR format to allocate IPs from (including gateway)")
+	flag.StringVar(&oidcIssuer, "issuer", "https://token.actions.githubusercontent.com/", "the expected issuer of the OIDC token")
 	flag.IntVar(&wgPort, "wg-port", 5555, "port for wireguard")
 	flag.IntVar(&httpPort, "http-port", 8080, "port for http")
 	flag.IntVar(&persistentKeepalive, "persistent-keepalive", 30, "persistentkeepalive value to use for WG")
