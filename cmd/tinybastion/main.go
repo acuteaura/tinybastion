@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
 	"github.com/acuteaura/tinybastion"
-	"github.com/acuteaura/tinybastion/internal/oidc"
 	"log"
 	"os"
 	"os/signal"
@@ -11,12 +11,31 @@ import (
 )
 
 func main() {
+	var deviceName, externalHostname, cidr, oidcIssuer string
+	var wgPort, httpPort, persistentKeepalive int
+	var help bool
+
+	flag.StringVar(&deviceName, "device-name", "tinybastion", "wireguard device name (will be created/deleted)")
+	flag.StringVar(&externalHostname, "external-hostname", "localhost", "hostname to advertise in peer config for this instance")
+	flag.StringVar(&cidr, "cidr", "10.0.0.0/24", "network in CIDR format to allocate IPs from (including gateway)")
+	flag.IntVar(&wgPort, "wg-port", 5555, "port for wireguard")
+	flag.IntVar(&httpPort, "http-port", 8080, "port for http")
+	flag.IntVar(&persistentKeepalive, "persistent-keepalive", 30, "persistentkeepalive value to use for WG")
+	flag.BoolVar(&help, "help", false, "print usage")
+
+	flag.Parse()
+
+	if help {
+		flag.Usage()
+		return
+	}
+
 	tb, err := tinybastion.New(tinybastion.Config{
-		DeviceName:          "tinybastion",
-		Port:                5555,
-		PersistentKeepalive: 10,
-		ExternalHostname:    "localhost",
-		CIDR:                "10.99.0.0/24",
+		DeviceName:          deviceName,
+		Port:                wgPort,
+		PersistentKeepalive: persistentKeepalive,
+		ExternalHostname:    externalHostname,
+		CIDR:                cidr,
 	})
 	if err != nil {
 		panic(err)
@@ -28,10 +47,7 @@ func main() {
 		}
 	}()
 
-	tinybastion.NewServer(context.TODO(), 8080, &oidc.ClientConfig{
-		Issuer:   "mock",
-		ClientID: "mock",
-	})
+	tinybastion.NewServer(context.TODO(), httpPort, oidcIssuer)
 
 	go func(ctx context.Context) {
 		t := time.Tick(time.Minute)

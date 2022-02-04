@@ -19,7 +19,7 @@ type CreateTunnelResponse struct {
 	PeerConfig *MarshallablePeerConfig
 }
 
-func NewServer(ctx context.Context, listenPort int, oidcConfig *oidc.ClientConfig) *Server {
+func NewServer(ctx context.Context, listenPort int, issuer string) *Server {
 	s := &Server{}
 
 	s.listener = &http.Server{
@@ -32,7 +32,7 @@ func NewServer(ctx context.Context, listenPort int, oidcConfig *oidc.ClientConfi
 
 	s.oidcProider = oidc.NewProvider()
 
-	s.oidcConfig = oidcConfig
+	s.oidcIssuer = issuer
 
 	go func() {
 		err := s.listener.ListenAndServe()
@@ -48,7 +48,7 @@ type Server struct {
 	listener    *http.Server
 	tb          *Bastion
 	oidcProider oidc.ProviderInterface
-	oidcConfig  *oidc.ClientConfig
+	oidcIssuer  string
 }
 
 func (s *Server) Destroy() error {
@@ -72,7 +72,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}
 
-	_, err = s.oidcProider.VerifyToken(tokenStr, s.oidcConfig)
+	_, err = s.oidcProider.VerifyToken(tokenStr, s.oidcIssuer)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 	}

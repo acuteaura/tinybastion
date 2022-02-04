@@ -11,7 +11,7 @@ var DefaultProvider = NewProvider()
 var _ ProviderInterface = DefaultProvider
 
 type ProviderInterface interface {
-	VerifyToken(tokenString string, clientConfig *ClientConfig) (*jwt.Token, error)
+	VerifyToken(tokenString string, issuer string) (*jwt.Token, error)
 }
 
 func NewProvider() *Provider {
@@ -29,14 +29,14 @@ type Provider struct {
 	discovery *DiscoveryClient
 }
 
-func (p *Provider) VerifyToken(tokenString string, clientConfig *ClientConfig) (*jwt.Token, error) {
+func (p *Provider) VerifyToken(tokenString string, issuer string) (*jwt.Token, error) {
 	claims := Claims{}
 	return jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
 		if err := claims.Valid(); err != nil {
 			return nil, err
 		}
-		if !claims.VerifyIssuer(clientConfig.Issuer, true) {
-			return nil, errors.Errorf("iss is not allowed [have=%s,expected=%s]", claims.Issuer, clientConfig.Issuer)
+		if !claims.VerifyIssuer(issuer, true) {
+			return nil, errors.Errorf("iss is not allowed [have=%s,expected=%s]", claims.Issuer, issuer)
 		}
 		if !claims.VerifyTyp("ID", true) {
 			return nil, errors.Errorf("typ is not allowed [have=%s,expected=%s]", claims.Type, "ID")
