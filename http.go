@@ -38,6 +38,7 @@ func NewServer(ctx context.Context, tb *Bastion, listenPort int, issuer string) 
 	s.oidcIssuer = issuer
 
 	go func() {
+		log.Default().Printf("Starting server at port %d", listenPort)
 		err := s.listener.ListenAndServe()
 		if err != nil {
 			log.Default().Fatalf("http server error: %s", err)
