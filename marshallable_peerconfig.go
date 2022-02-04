@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -21,12 +22,15 @@ func (m *MarshallablePeerConfig) MarshalJSON() ([]byte, error) {
 		PresharedKey                string
 		PersistentKeepaliveInterval int
 		PublicKey                   string
+		AllowedIP                   string
 	}{
-		fmt.Sprintf("%s:%d", m.BSI.EndpointHost, m.BSI.EndpointPort),
-		m.BSI.GatewayIP,
-		m.P.PresharedKey.String(),
-		int(m.P.PersistentKeepaliveInterval.Seconds()),
-		m.BSI.PublicKey,
+		Endpoint:                    fmt.Sprintf("%s:%d", m.BSI.EndpointHost, m.BSI.EndpointPort),
+		Gateway:                     m.BSI.GatewayIP,
+		PresharedKey:                m.P.PresharedKey.String(),
+		PersistentKeepaliveInterval: int(m.P.PersistentKeepaliveInterval.Seconds()),
+		PublicKey:                   m.BSI.PublicKey,
+		// FIXME: this is assuming we only have a single ip, which is assuming a lot..
+		AllowedIP: m.P.AllowedIPs[0].String(),
 	}
 	return json.Marshal(&out)
 }
@@ -39,6 +43,7 @@ func (m *MarshallablePeerConfig) UnmarshalJSON(bytes []byte) error {
 		PresharedKey                string
 		PersistentKeepaliveInterval int
 		PublicKey                   string
+		AllowedIP                   string
 	}
 
 	err := json.Unmarshal(bytes, &raw)
@@ -65,10 +70,18 @@ func (m *MarshallablePeerConfig) UnmarshalJSON(bytes []byte) error {
 		return fmt.Errorf("could not parse pre shared key: %+v", err)
 	}
 
+	_, ipNet, err := net.ParseCIDR(raw.AllowedIP)
+	if err != nil {
+		return fmt.Errorf("could not parse allowed IP as CIDR: %+v", err)
+	}
+
 	persistentKeepaliveInterval := time.Second * time.Duration(raw.PersistentKeepaliveInterval)
 	m.P = wgtypes.PeerConfig{
 		PresharedKey:                &preSharedKey,
 		PersistentKeepaliveInterval: &persistentKeepaliveInterval,
+		AllowedIPs: []net.IPNet{
+			*ipNet,
+		},
 	}
 
 	return nil

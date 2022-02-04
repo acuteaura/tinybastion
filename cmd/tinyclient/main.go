@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"text/template"
 )
 
 func main() {
@@ -26,6 +27,11 @@ func main() {
 	wgKey, err := wgtypes.ParseKey(publicKey)
 	if err != nil {
 		log.Fatalf("Could not parse public key: %+v", err)
+	}
+
+	privateKey, ok := os.LookupEnv("PRIVATE_KEY")
+	if !ok {
+		log.Fatal("Cannot proceed without PRIVATE_KEY env set.")
 	}
 
 	marshallableKey := tinybastion.MarshallableKey{K: wgKey}
@@ -76,10 +82,47 @@ func main() {
 		log.Fatalf("Could not unmarshall response into CreateTunnelResponse: %+v", err)
 	}
 
-	config, err := json.Marshal(response.PeerConfig)
+	log.Default().Printf("AllowedIPs:\n%+v\n", response.PeerConfig.P.AllowedIPs)
+
+	var config struct {
+		tinybastion.MarshallablePeerConfig
+
+		ListenPort int
+		PrivateKey string
+		AllowedIPs []string
+		DNS        string
+	}
+	config.P = response.PeerConfig.P
+	config.BSI = response.PeerConfig.BSI
+	config.ListenPort = 55555
+	config.PrivateKey = privateKey
+	config.AllowedIPs = []string{
+		response.PeerConfig.BSI.GatewayIP,
+		// TODO: Make this configurable
+	}
+	config.DNS = "1.1.1.1" // TODO: this too
+
+	configTemplate, err := template.New("config").Parse(`
+[Interface]
+Address = {{index .P.AllowedIPs 0}}
+ListenPort = {{.ListenPort}}
+PrivateKey = {{.PrivateKey}}
+PostUp = iptables -A FORWARD -i client -j ACCEPT; iptables -t nat -A POSTROUTING -o client -j MASQUERADE
+PostDown = iptables -D FORWARD -i client -j ACCEPT; iptables -t nat -D POSTROUTING -o client -j MASQUERADE
+
+[Peer]
+# Bastion
+PublicKey = {{.BSI.PublicKey}}
+Endpoint = {{.BSI.EndpointHost}}:{{.BSI.EndpointPort}}
+AllowedIPs = {{range .AllowedIPs}}{{.}}, {{end}}
+PersistentKeepalive = {{.P.PersistentKeepaliveInterval}}
+`)
 	if err != nil {
-		log.Fatalf("Could not marshall peer config: %+v", config)
+		log.Fatalf("Could not create config template: %+v", err)
 	}
 
-	fmt.Print(string(config))
+	err = configTemplate.Execute(os.Stdout, config)
+	if err != nil {
+		log.Fatalf("Could not render WireGuard config: %+v", err)
+	}
 }

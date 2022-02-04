@@ -1,8 +1,12 @@
+BASTION_HOST ?= wg-test-1
+GO_BIN ?= go1.18beta2
+
 default:
 	echo "Choose one of [bastion, client]"
 
 bastion:
-	go1.18beta2 build ./cmd/tinybastion
+	$(GO_BIN) build ./cmd/tinybastion
 
 client:
-	go1.18beta2 build ./cmd/tinyclient
+	$(GO_BIN) build ./cmd/tinyclient
+
