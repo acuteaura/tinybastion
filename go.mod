@@ -3,7 +3,7 @@ module github.com/acuteaura/tinybastion
 go 1.18
 
 require (
-	github.com/golang-jwt/jwt/v4 v4.2.0
+	github.com/google/uuid v1.3.0
 	github.com/jonboulle/clockwork v0.2.2
 	github.com/lestrrat-go/jwx v1.2.18
 	github.com/metal-stack/go-ipam v1.8.6
@@ -23,7 +23,6 @@ require (
 	github.com/go-redis/redis/v8 v8.11.4 // indirect
 	github.com/goccy/go-json v0.9.4 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/jmoiron/sqlx v1.3.4 // indirect
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
