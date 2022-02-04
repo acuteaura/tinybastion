@@ -82,8 +82,6 @@ func main() {
 		log.Fatalf("Could not unmarshall response into CreateTunnelResponse: %+v", err)
 	}
 
-	log.Default().Printf("AllowedIPs:\n%+v\n", response.PeerConfig.P.AllowedIPs)
-
 	var config struct {
 		tinybastion.MarshallablePeerConfig
 
