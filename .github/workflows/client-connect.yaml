@@ -13,6 +13,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Install WireGuard
+        run: sudo apt update && sudo apt install wireguard
+
+      - name: Install Openresolv
+        run: sudo apt install openresolv
+
       - name: Get Token
         id: oidc
         run: |
@@ -33,9 +39,15 @@ jobs:
           GO_BIN: go
 
       - name: Run Client
-        run: ./tinyclient
+        run: umask 077; ./tinyclient > client.conf
         env:
           PUBLIC_KEY: ${{ secrets.PUBLIC_KEY }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           BASTION_API_ENDPOINT: ${{ secrets.BASTION_API_ENDPOINT }}
           OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+
+      - name: UP UP!
+        run: sudo wg-quick up ./client.conf
+
+      - name: Check WG
+        run: sudo wg

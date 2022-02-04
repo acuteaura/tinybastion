@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"text/template"
 )
 
@@ -85,20 +86,22 @@ func main() {
 	var config struct {
 		tinybastion.MarshallablePeerConfig
 
-		ListenPort int
-		PrivateKey string
-		AllowedIPs []string
-		DNS        string
+		ListenPort          int
+		PrivateKey          string
+		AllowedIPs          string
+		DNS                 string
+		PersistentKeepalive int
 	}
 	config.P = response.PeerConfig.P
 	config.BSI = response.PeerConfig.BSI
 	config.ListenPort = 55555
 	config.PrivateKey = privateKey
-	config.AllowedIPs = []string{
+	config.AllowedIPs = strings.Join([]string{
 		response.PeerConfig.BSI.GatewayIP,
 		// TODO: Make this configurable
 	}
 	config.DNS = "1.1.1.1" // TODO: this too
+	config.PersistentKeepalive = int(response.PeerConfig.P.PersistentKeepaliveInterval.Seconds())
 
 	configTemplate, err := template.New("config").Parse(`
 [Interface]
@@ -112,8 +115,8 @@ PostDown = iptables -D FORWARD -i client -j ACCEPT; iptables -t nat -D POSTROUTI
 # Bastion
 PublicKey = {{.BSI.PublicKey}}
 Endpoint = {{.BSI.EndpointHost}}:{{.BSI.EndpointPort}}
-AllowedIPs = {{range .AllowedIPs}}{{.}}, {{end}}
-PersistentKeepalive = {{.P.PersistentKeepaliveInterval}}
+AllowedIPs = {{.AllowedIPs}}
+PersistentKeepalive = {{.PersistentKeepalive}}
 `)
 	if err != nil {
 		log.Fatalf("Could not create config template: %+v", err)
