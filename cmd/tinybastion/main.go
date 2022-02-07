@@ -50,15 +50,17 @@ func main() {
 	tinybastion.NewServer(context.TODO(), httpPort, oidcIssuer)
 
 	go func(ctx context.Context) {
-		t := time.Tick(time.Minute)
-		select {
-		case <-t:
-			err = tb.CleanupPeers()
-			if err != nil {
-				panic(err)
+		for {
+			t := time.Tick(time.Minute)
+			select {
+			case <-t:
+				err = tb.CleanupPeers()
+				if err != nil {
+					panic(err)
+				}
+			case <-ctx.Done():
+				return
 			}
-		case <-ctx.Done():
-			return
 		}
 	}(context.TODO())
 
