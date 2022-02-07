@@ -114,6 +114,7 @@ PostDown = iptables -D FORWARD -i client -j ACCEPT; iptables -t nat -D POSTROUTI
 [Peer]
 # Bastion
 PublicKey = {{.BSI.PublicKey}}
+PresharedKey = {{.P.PresharedKey}}
 Endpoint = {{.BSI.EndpointHost}}:{{.BSI.EndpointPort}}
 AllowedIPs = {{.AllowedIPs}}
 PersistentKeepalive = {{.PersistentKeepalive}}
