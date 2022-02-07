@@ -72,6 +72,8 @@ func (b *Bastion) init() error {
 		}
 	}
 
+	// LinkAttr is used to describe the interface
+	// we just need to set a name
 	wgLinkAttr := netlink.NewLinkAttrs()
 	wgLinkAttr.Name = b.Config.DeviceName
 
@@ -79,22 +81,26 @@ func (b *Bastion) init() error {
 		LinkAttrs: wgLinkAttr,
 	}
 
+	// add the interface
 	err = netlink.LinkAdd(wgLink)
 	if err != nil {
 		return errors.Wrap(err, "unable to create link")
 	}
 
-	// reaquire the link to get the index
+	// re-aquire the link to get the index, LinkAdd does not write info back!
 	b.link, err = netlink.LinkByName(b.Config.DeviceName)
 	if err != nil {
 		return err
 	}
 
+	// allocate the first IP of the network block
 	ip, err := b.ipam.AcquireIP(b.Config.CIDR)
 	if err != nil {
 		return err
 	}
 
+	// add the IP + /32, since we don't want subnet routing
+	// this will however require setting up a route for the CIDR
 	err = netlink.AddrAdd(wgLink, &netlink.Addr{IPNet: &net.IPNet{
 		IP:   ip.IP.IPAddr().IP,
 		Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -103,11 +109,14 @@ func (b *Bastion) init() error {
 		return err
 	}
 
+	// WG interfaces always show UNKNOWN, but need to be set up anyway to accept routes
 	err = netlink.LinkSetUp(b.link)
 	if err != nil {
 		return err
 	}
 
+	// create a route to dump all non-local traffic for the CIDR into the interface
+	// we have no implicit routing since we use a /32 on the interface
 	_, ipnet, err := net.ParseCIDR(b.Config.CIDR)
 	if err != nil {
 		return err
@@ -123,16 +132,17 @@ func (b *Bastion) init() error {
 
 	b.gatewayIP = ip
 
+	// ensure the interface is considered valid by wireguard
 	_, err = b.Client.Device(b.Config.DeviceName)
 	if err != nil {
 		return err
 	}
 
+	// generate ephemeral bastion keys
 	privkey, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
 		return err
 	}
-
 	b.publicKey = privkey.PublicKey()
 
 	port := b.Config.Port
@@ -157,6 +167,8 @@ func (b *Bastion) AddPeer(key wgtypes.Key) (*wgtypes.PeerConfig, error) {
 		return nil, err
 	}
 
+	// time interval of no activity for which wireguard forces a keepalive packet
+	// usually used for NAT, but we use it too check if the peer is still there
 	persistentKeepalive := time.Duration(b.Config.PersistentKeepalive) * time.Second
 
 	ip, err := b.ipam.AcquireIP(b.Config.CIDR)
@@ -171,6 +183,8 @@ func (b *Bastion) AddPeer(key wgtypes.Key) (*wgtypes.PeerConfig, error) {
 		PersistentKeepaliveInterval: &persistentKeepalive,
 		ReplaceAllowedIPs:           true,
 
+		// we do not need subnet routing, so we use a /32 mask
+		// this does however require us to set up explicit routes
 		AllowedIPs: []net.IPNet{
 			{IP: ip.IP.IPAddr().IP, Mask: net.IPv4Mask(255, 255, 255, 255)},
 		},
