@@ -51,3 +51,9 @@ jobs:
 
       - name: Check WG
         run: sudo wg
+
+      - name: Show routes
+        run: sudo route
+
+      - name: Ping Bastion over VPN
+        run: ping -c5 10.0.0.1
