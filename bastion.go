@@ -84,7 +84,11 @@ func (b *Bastion) init() error {
 		return errors.Wrap(err, "unable to create link")
 	}
 
-	b.link = wgLink
+	// reaquire the link to get the index
+	b.link, err = netlink.LinkByName(b.Config.DeviceName)
+	if err != nil {
+		return err
+	}
 
 	ip, err := b.ipam.AcquireIP(b.Config.CIDR)
 	if err != nil {
@@ -95,6 +99,24 @@ func (b *Bastion) init() error {
 		IP:   ip.IP.IPAddr().IP,
 		Mask: net.IPv4Mask(255, 255, 255, 255),
 	}})
+	if err != nil {
+		return err
+	}
+
+	err = netlink.LinkSetUp(b.link)
+	if err != nil {
+		return err
+	}
+
+	_, ipnet, err := net.ParseCIDR(b.Config.CIDR)
+	if err != nil {
+		return err
+	}
+	route := &netlink.Route{
+		Dst:       ipnet,
+		LinkIndex: b.link.Attrs().Index,
+	}
+	err = netlink.RouteAdd(route)
 	if err != nil {
 		return err
 	}
