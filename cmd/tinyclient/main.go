@@ -108,6 +108,7 @@ func main() {
 Address = {{index .P.AllowedIPs 0}}
 ListenPort = {{.ListenPort}}
 PrivateKey = {{.PrivateKey}}
+DNS = {{.DNS}}
 PostUp = iptables -A FORWARD -i client -j ACCEPT; iptables -t nat -A POSTROUTING -o client -j MASQUERADE
 PostDown = iptables -D FORWARD -i client -j ACCEPT; iptables -t nat -D POSTROUTING -o client -j MASQUERADE
 
