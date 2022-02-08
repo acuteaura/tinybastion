@@ -1,7 +1,7 @@
 name: Client Connect
 on:
   push:
-    branches: [ client ]
+  workflow_dispatch:
 
 jobs:
   connect:
