@@ -99,7 +99,7 @@ func main() {
 	config.AllowedIPs = strings.Join([]string{
 		response.PeerConfig.BSI.GatewayIP,
 		// TODO: Make this configurable
-	}
+	})
 	config.DNS = "1.1.1.1" // TODO: this too
 	config.PersistentKeepalive = int(response.PeerConfig.P.PersistentKeepaliveInterval.Seconds())
 
